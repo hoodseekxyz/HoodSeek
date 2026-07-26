@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // output: 'standalone' -> kaldır
+  // standalone kaldırıldı - Cloudflare Pages için
 }
 
 export default nextConfig
