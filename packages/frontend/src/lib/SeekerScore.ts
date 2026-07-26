@@ -7,23 +7,23 @@
 // different formula (SuccessRate/StakeScore/TenureScore) without
 // consulting this document.
 //
-// CEO decision (2026-07-24, MVP strategy): the WillDividendTracker
+// CEO decision (2026-07-24, MVP strategy): the HoseDividendTracker
 // (0xe117...) dependency for C/F is cut OFF-CHAIN, not by adding native
-// claim/faction tracking to the contract — WillTokenV6 (which would
-// have added that on-chain) is CANCELLED; WillTokenV5 stays on Mainnet,
+// claim/faction tracking to the contract — HoodSeekV2 (which would
+// have added that on-chain) is CANCELLED; HoodSeekV1 stays on Mainnet,
 // untouched. See artifacts/phase3-roadmap.md for what's deferred.
 
 export interface ClawScoreInput {
-  /** WILL balance, 18 decimals, as a bigint. */
+  /** HOSE balance, 18 decimals, as a bigint. */
   balance: bigint
   /** Days the current position has been held. */
   holdDays: number
   /**
    * V5-native "protocol activity" count — source this from
-   * `WillTokenV5.nonces(holder)` (every `executeIntent` call where this
+   * `HoodSeekV1.nonces(holder)` (every `executeIntent` call where this
    * address was `from` increments it; see
    * `ajan4-testnet-read.ts#getActivityCount`). Previously sourced from
-   * WillDividendTracker's `withdrawDividend` events — that dependency
+   * HoseDividendTracker's `withdrawDividend` events — that dependency
    * is cut per the 2026-07-24 CEO decision above. §7's "C = Claim Score
    * (protokol aktivitesi)" wording already means general protocol
    * activity, not literally dividend withdrawals, so this is a faithful
@@ -31,8 +31,8 @@ export interface ClawScoreInput {
    */
   claimCount: number
   /**
-   * Faction (cat) switches/tenure. WillTokenV5 has NO native faction
-   * state — that would have required the now-cancelled WillTokenV6.
+   * Faction (cat) switches/tenure. HoodSeekV1 has NO native faction
+   * state — that would have required the now-cancelled HoodSeekV2.
    * No data source is wired for MVP: omit both faction fields and
    * factionScore computes as 0 (see calcClawScore below). Phase 3
    * roadmap item — see artifacts/phase3-roadmap.md.
@@ -73,7 +73,7 @@ const WEIGHTS = {
 } as const
 
 // §2.1: Scarcat tier threshold — H's cap is deliberately aligned to it.
-const HOLDER_CAP_WILL = 10_000_000n * 10n ** 18n
+const HOLDER_CAP_HOSE = 10_000_000n * 10n ** 18n
 const TIME_CAP_DAYS = 30
 const CLAIM_CAP_COUNT = 10
 const FACTION_CAP_DAYS = 30
@@ -81,15 +81,15 @@ const FACTION_CAP_DAYS = 30
 const FACTION_SWITCH_DECAY = 0.5
 
 /**
- * balance / HOLDER_CAP_WILL, computed in bigint fixed-point (6 decimals)
+ * balance / HOLDER_CAP_HOSE, computed in bigint fixed-point (6 decimals)
  * before ever touching a JS Number — a raw `Number(balance)` on an
  * 18-decimal token amount can exceed Number.MAX_SAFE_INTEGER and lose
  * precision. Only the small 0-1,000,000 ratio is converted.
  */
 export function calcHolderScore(balance: bigint): number {
-  if (balance >= HOLDER_CAP_WILL) return 1.0
+  if (balance >= HOLDER_CAP_HOSE) return 1.0
   if (balance <= 0n) return 0
-  const scaled = (balance * 1_000_000n) / HOLDER_CAP_WILL
+  const scaled = (balance * 1_000_000n) / HOLDER_CAP_HOSE
   return Number(scaled) / 1_000_000
 }
 

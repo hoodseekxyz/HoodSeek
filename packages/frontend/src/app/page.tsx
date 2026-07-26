@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPublicClient, http, type Address } from 'viem';
-import { robinhoodChainTestnet } from '@/lib/openclaw-node';
+import { robinhoodChain } from '@/lib/openclaw-node';
 import { calcClawScore } from '@/lib/SeekerScore';
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     const client = createPublicClient({
-      chain: robinhoodChainTestnet,
+      chain: robinhoodChain,
       transport: http(process.env.NEXT_PUBLIC_ROBINHOOD_RPC || ''),
     });
 

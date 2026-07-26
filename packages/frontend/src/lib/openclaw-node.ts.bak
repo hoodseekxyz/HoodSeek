@@ -1,0 +1,88 @@
+// HoodSeek Node — off-chain A2A bridge for HoodSeekV1
+// EIP-712 intent construction + on-chain settlement via viem
+
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  defineChain,
+  type Address,
+  type Hex,
+  type Account,
+  type PublicClient,
+  type WalletClient,
+} from 'viem'
+
+export const robinhoodChain = defineChain({
+  id: 4663,
+  name: 'Robinhood Chain',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: [process.env.NEXT_PUBLIC_ROBINHOOD_RPC ?? ''] },
+  },
+})
+
+export const HOSE_TOKEN_ADDRESS: Address = (process.env.NEXT_PUBLIC_HOSE_TOKEN as Address) || '0x0000000000000000000000000000000000000000'
+
+const HOSE_TOKEN_V1_ABI = [
+  { type: 'function', name: 'nonces', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'isAgent', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'paused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
+  {
+    type: 'function',
+    name: 'executeIntent',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+      { name: 'taskId', type: 'bytes32' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
+  },
+] as const
+
+export function createHoodSeekNode(contractAddress: Address = HOSE_TOKEN_ADDRESS) {
+  const publicClient: PublicClient = createPublicClient({
+    chain: robinhoodChain,
+    transport: http(),
+  })
+
+  return {
+    publicClient,
+    async getNonce(holder: Address): Promise<bigint> {
+      return publicClient.readContract({
+        address: contractAddress,
+        abi: HOSE_TOKEN_V1_ABI,
+        functionName: 'nonces',
+        args: [holder],
+      })
+    },
+    async isRegisteredAgent(agent: Address): Promise<boolean> {
+      return publicClient.readContract({
+        address: contractAddress,
+        abi: HOSE_TOKEN_V1_ABI,
+        functionName: 'isAgent',
+        args: [agent],
+      })
+    },
+    async isPaused(): Promise<boolean> {
+      return publicClient.readContract({
+        address: contractAddress,
+        abi: HOSE_TOKEN_V1_ABI,
+        functionName: 'paused',
+      })
+    },
+    async getBalance(holder: Address): Promise<bigint> {
+      return publicClient.readContract({
+        address: contractAddress,
+        abi: HOSE_TOKEN_V1_ABI,
+        functionName: 'balanceOf',
+        args: [holder],
+      })
+    },
+  }
+}
