@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {HoodSeekV1} from "./ajan1-HoodSeekV1.sol";
+import {HoodSeekV1} from "../src/HoodSeekV1.sol";
 
 // Minimal ERC20-like mock for burnLP tests — not part of the deploy set.
 contract MockLPToken {
