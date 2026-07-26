@@ -1,10 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: process.cwd(),
-  },
+  // output: 'standalone' -> kaldır
 }
 
 export default nextConfig
