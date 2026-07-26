@@ -1,14 +1,4 @@
-// MIGRATED 2026-07-26 from artifacts/ajan6-ClawScore.ts into the HoodSeek
-// repo (packages/core/src/SeekerScore.ts). ClawScore -> SeekerScore
-// (type names + prose): the input/output types, calcClawScore(), and
-// HOLDER_CAP_WILL all got the same rename. Left unchanged: the `cs100`
-// field and `tierForCs100` (not a literal match for any of the renamed
-// terms) and the `'Claw'` tier band name (separate from "ClawScore" —
-// same reasoning ClawSweeper.sol keeps "Claw" in its own name; only the
-// score *system's* name changed, not every "claw" in the ecosystem's
-// vocabulary).
-//
-// Seeker Score — implements SCARCAT_ECON_MODEL.md §7 exactly (Manifesto
+// Claw Score — implements SCARCAT_ECON_MODEL.md §7 exactly (Manifesto
 // v2+v3 synthesis). Source of truth: ~/dev/will-dapp/design/SCARCAT_ECON_MODEL.md
 //
 // CS = 0.35H + 0.25T + 0.20C + 0.15F + 0.05A
@@ -20,33 +10,31 @@
 // CEO decision (2026-07-24, MVP strategy): the WillDividendTracker
 // (0xe117...) dependency for C/F is cut OFF-CHAIN, not by adding native
 // claim/faction tracking to the contract — WillTokenV6 (which would
-// have added that on-chain) is CANCELLED; HoodSeekV1 (formerly
-// WillTokenV5) stays on Mainnet, untouched. See artifacts/phase3-roadmap.md
-// for what's deferred.
+// have added that on-chain) is CANCELLED; WillTokenV5 stays on Mainnet,
+// untouched. See artifacts/phase3-roadmap.md for what's deferred.
 
-export interface SeekerScoreInput {
-  /** HOSE balance, 18 decimals, as a bigint. */
+export interface ClawScoreInput {
+  /** WILL balance, 18 decimals, as a bigint. */
   balance: bigint
   /** Days the current position has been held. */
   holdDays: number
   /**
-   * V1-native "protocol activity" count — source this from
-   * `HoodSeekV1.nonces(holder)` (every `executeIntent` call where this
+   * V5-native "protocol activity" count — source this from
+   * `WillTokenV5.nonces(holder)` (every `executeIntent` call where this
    * address was `from` increments it; see
-   * `ajan4-testnet-read.ts#getActivityCount`, still in the old repo).
-   * Previously sourced from WillDividendTracker's `withdrawDividend`
-   * events — that dependency is cut per the 2026-07-24 CEO decision
-   * above. §7's "C = Claim Score (protokol aktivitesi)" wording already
-   * means general protocol activity, not literally dividend withdrawals,
-   * so this is a faithful reinterpretation of the existing formula, not
-   * a change to it.
+   * `ajan4-testnet-read.ts#getActivityCount`). Previously sourced from
+   * WillDividendTracker's `withdrawDividend` events — that dependency
+   * is cut per the 2026-07-24 CEO decision above. §7's "C = Claim Score
+   * (protokol aktivitesi)" wording already means general protocol
+   * activity, not literally dividend withdrawals, so this is a faithful
+   * reinterpretation of the existing formula, not a change to it.
    */
   claimCount: number
   /**
-   * Faction (cat) switches/tenure. HoodSeekV1 has NO native faction
+   * Faction (cat) switches/tenure. WillTokenV5 has NO native faction
    * state — that would have required the now-cancelled WillTokenV6.
    * No data source is wired for MVP: omit both faction fields and
-   * factionScore computes as 0 (see calcSeekerScore below). Phase 3
+   * factionScore computes as 0 (see calcClawScore below). Phase 3
    * roadmap item — see artifacts/phase3-roadmap.md.
    */
   factionSwitchCount?: number
@@ -63,7 +51,7 @@ export interface SeekerScoreInput {
   agentScore?: number
 }
 
-export interface SeekerScoreBreakdown {
+export interface ClawScoreBreakdown {
   holderScore: number
   timeScore: number
   claimScore: number
@@ -85,7 +73,7 @@ const WEIGHTS = {
 } as const
 
 // §2.1: Scarcat tier threshold — H's cap is deliberately aligned to it.
-const HOLDER_CAP_HOSE = 10_000_000n * 10n ** 18n
+const HOLDER_CAP_WILL = 10_000_000n * 10n ** 18n
 const TIME_CAP_DAYS = 30
 const CLAIM_CAP_COUNT = 10
 const FACTION_CAP_DAYS = 30
@@ -93,15 +81,15 @@ const FACTION_CAP_DAYS = 30
 const FACTION_SWITCH_DECAY = 0.5
 
 /**
- * balance / HOLDER_CAP_HOSE, computed in bigint fixed-point (6 decimals)
+ * balance / HOLDER_CAP_WILL, computed in bigint fixed-point (6 decimals)
  * before ever touching a JS Number — a raw `Number(balance)` on an
  * 18-decimal token amount can exceed Number.MAX_SAFE_INTEGER and lose
  * precision. Only the small 0-1,000,000 ratio is converted.
  */
 export function calcHolderScore(balance: bigint): number {
-  if (balance >= HOLDER_CAP_HOSE) return 1.0
+  if (balance >= HOLDER_CAP_WILL) return 1.0
   if (balance <= 0n) return 0
-  const scaled = (balance * 1_000_000n) / HOLDER_CAP_HOSE
+  const scaled = (balance * 1_000_000n) / HOLDER_CAP_WILL
   return Number(scaled) / 1_000_000
 }
 
@@ -121,14 +109,14 @@ export function calcFactionScore(switchCount: number, factionDays: number): numb
 }
 
 /** §7.4 tier bands, CS on a 0-100 scale. */
-export function tierForCs100(cs100: number): SeekerScoreBreakdown['tier'] {
+export function tierForCs100(cs100: number): ClawScoreBreakdown['tier'] {
   if (cs100 >= 75) return 'Scarcat'
   if (cs100 >= 50) return 'Fang'
   if (cs100 >= 25) return 'Claw'
   return 'Pawn'
 }
 
-export function calcSeekerScore(input: SeekerScoreInput): SeekerScoreBreakdown {
+export function calcClawScore(input: ClawScoreInput): ClawScoreBreakdown {
   const holderScore = calcHolderScore(input.balance)
   const timeScore = calcTimeScore(input.holdDays)
   const claimScore = calcClaimScore(input.claimCount)

@@ -1,19 +1,20 @@
-# Foundry
-packages/contracts/out/
-packages/contracts/cache/
-# lib/forge-std is a git submodule (see .gitmodules) — tracked, not ignored
+# Build artifacts
+dist/
+out/
+packages/*/out/
+packages/*/dist/
 
 # Node
 node_modules/
-package-lock.json
 
-# Secrets — never committed under any name
-.env
-.env.*
-!.env.example
+# Secrets
+*.env
+*.env.local
 *.pem
-*.key
-*private*key*
+
+# IDE
+.vscode/
+.idea/
 
 # OS
 .DS_Store

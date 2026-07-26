@@ -1,22 +1,15 @@
-// MIGRATED 2026-07-26 from artifacts/openclaw-node.ts into the HoodSeek
-// repo (packages/core/src/). WILL_TOKEN_V5_ADDRESS -> HOSE_TOKEN_V1_ADDRESS,
-// now env-driven (HOSE_TOKEN_ADDRESS) rather than hardcoding the old
-// WillTokenV5-era address — no fresh HoodSeekV1 contract is deployed yet,
-// so there is nothing real to hardcode. See createOpenClawNode() below.
-//
-// OpenClaw node — off-chain A2A bridge for HoodSeekV1, per
+// OpenClaw node — off-chain A2A bridge for WillTokenV5, per
 // artifacts/openclaw-architecture.md §1/§3 ("imsg" negotiation +
 // EIP-712 intent construction + on-chain settlement).
 //
-// Fully V1-native: no WillDividendTracker (0xe117...) reference
+// Fully V5-native: no WillDividendTracker (0xe117...) reference
 // anywhere in this file (per CEO decision 2026-07-24 — see
 // phase3-roadmap.md item 3 for whether the real imsg/acpx/wacli/gogcli
 // repos exist; this is a from-scratch, minimal implementation of just
-// enough of the "imsg" role to unblock A2A settlement on HoodSeekV1, not a
+// enough of the "imsg" role to unblock A2A settlement on V5, not a
 // port of anything that already exists).
 //
-// Security posture (mirrors the old repo's ajan1-testnet-deploy.sh /
-// ajan4-testnet-read.ts — not migrated here, still in scarcat-os):
+// Security posture (mirrors ajan1-testnet-deploy.sh / ajan4-testnet-read.ts):
 // - No private key is ever read from or written to a file by this module.
 // - Signing requires an explicit `Account` passed in by the caller
 //   (e.g. a viem LocalAccount) — nothing here holds or derives key
@@ -48,16 +41,11 @@ export const robinhoodChain = defineChain({
   },
 })
 
-// No fresh HoodSeekV1 deploy exists yet (see DEPLOYMENT_LOG.md /
-// SWARM_STATUS.md in the old repo) — env-driven with no fallback address,
-// rather than carrying the old WillTokenV5-era address forward under a
-// new name. createOpenClawNode() below throws if this is unset and no
-// explicit contractAddress is passed.
-export const HOSE_TOKEN_V1_ADDRESS: Address = (process.env.HOSE_TOKEN_ADDRESS ?? '') as Address
+export const WILL_TOKEN_V5_ADDRESS: Address = '0xd69c454eCf09eE8294e69231e0727e55F59E42D1'
 
 // ABI slice this node needs: the reads used by watchers, plus the one
 // state-changing function intents ultimately settle through.
-const HOSE_TOKEN_V1_ABI = [
+const WILL_TOKEN_V5_ABI = [
   { type: 'function', name: 'nonces', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
   { type: 'function', name: 'isAgent', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
   { type: 'function', name: 'paused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
@@ -101,7 +89,7 @@ const HOSE_TOKEN_V1_ABI = [
 ] as const
 
 // ============ EIP-712 intent construction ============
-// Must match HoodSeekV1.sol's DOMAIN_SEPARATOR / INTENT_TYPEHASH
+// Must match ajan1-WillTokenV5.sol's DOMAIN_SEPARATOR / INTENT_TYPEHASH
 // exactly — the contract's EIP712Domain has NO "version" field
 // (`keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)")`).
 // Including a `version` in the domain object below would make viem
@@ -131,21 +119,15 @@ export interface AgentIntent {
 function domainFor(contractAddress: Address) {
   // Deliberately only these three fields — see note above.
   return {
-    name: 'HoodSeekV1',
+    name: 'WillTokenV5',
     chainId: robinhoodChain.id,
     verifyingContract: contractAddress,
   } as const
 }
 
-export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDRESS) {
+export function createOpenClawNode(contractAddress: Address = WILL_TOKEN_V5_ADDRESS) {
   if (!process.env.ROBINHOOD_RPC) {
     throw new Error('ROBINHOOD_RPC not set')
-  }
-  if (!contractAddress) {
-    throw new Error(
-      'no contract address: HOSE_TOKEN_ADDRESS is not set and no contractAddress was passed — ' +
-        'HoodSeekV1 has not been deployed yet (see ajan1-deploy.s.sol / ajan1-testnet-deploy.sh in scarcat-os)'
-    )
   }
 
   const publicClient: PublicClient = createPublicClient({
@@ -161,7 +143,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     async getNonce(holder: Address): Promise<bigint> {
       return publicClient.readContract({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         functionName: 'nonces',
         args: [holder],
       })
@@ -170,7 +152,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     async isRegisteredAgent(agent: Address): Promise<boolean> {
       return publicClient.readContract({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         functionName: 'isAgent',
         args: [agent],
       })
@@ -179,7 +161,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     async isPaused(): Promise<boolean> {
       return publicClient.readContract({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         functionName: 'paused',
       })
     },
@@ -187,7 +169,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     async getBalance(holder: Address): Promise<bigint> {
       return publicClient.readContract({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         functionName: 'balanceOf',
         args: [holder],
       })
@@ -200,7 +182,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     watchIntents(onIntent: (log: { from: Address; to: Address; amount: bigint; taskId: Hex }) => void) {
       return publicClient.watchContractEvent({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         eventName: 'IntentExecuted',
         onLogs: (logs) => {
           for (const log of logs) {
@@ -220,7 +202,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     watchAgentRegistry(onChange: (agent: Address, registered: boolean) => void) {
       const unwatchRegistered = publicClient.watchContractEvent({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         eventName: 'AgentRegistered',
         onLogs: (logs) => {
           for (const log of logs) if (log.args.agent) onChange(log.args.agent, true)
@@ -228,7 +210,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
       })
       const unwatchRevoked = publicClient.watchContractEvent({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         eventName: 'AgentRevoked',
         onLogs: (logs) => {
           for (const log of logs) if (log.args.agent) onChange(log.args.agent, false)
@@ -243,13 +225,13 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
     watchPauseState(onChange: (paused: boolean) => void) {
       const unwatchPaused = publicClient.watchContractEvent({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         eventName: 'Paused',
         onLogs: () => onChange(true),
       })
       const unwatchUnpaused = publicClient.watchContractEvent({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         eventName: 'Unpaused',
         onLogs: () => onChange(false),
       })
@@ -315,7 +297,7 @@ export function createOpenClawNode(contractAddress: Address = HOSE_TOKEN_V1_ADDR
       }
       return agentWalletClient.writeContract({
         address: contractAddress,
-        abi: HOSE_TOKEN_V1_ABI,
+        abi: WILL_TOKEN_V5_ABI,
         functionName: 'executeIntent',
         args: [intent.from, intent.to, intent.amount, intent.deadline, intent.taskId, signature],
         account: agentWalletClient.account,

@@ -1,12 +1,8 @@
-// MIGRATED 2026-07-26 from artifacts/swarm-boot.ts into the HoodSeek repo
-// (packages/core/src/). Import updated: ./ajan6-ClawScore -> ./SeekerScore,
-// calcClawScore -> calcSeekerScore.
-//
 // swarm-boot.ts — Faz 3 Aşama 2: Swarm Boot Sequence.
 // Assigns each of the 9 SCARCAT swarm agents (Ajan-1..Ajan-9, per
 // status/SWARM_STATUS.md) a unique TEST wallet, connects them to a
 // shared OpenClawBridge for A2A negotiation, and watches the real
-// HoodSeekV1 contract (via openclaw-node.ts) for on-chain activity.
+// WillTokenV5 contract (via openclaw-node.ts) for on-chain activity.
 //
 // TEST WALLETS ONLY. Private keys are generated fresh in-memory each
 // run via viem's generatePrivateKey() — never written to disk, never
@@ -14,13 +10,13 @@
 // real guardian keys (dispatch/GUARDIAN_ADDRESSES.txt) and must never
 // be used for a real deploy or mainnet action. A test wallet has no
 // on-chain agent authority until someone separately runs it through
-// HoodSeekV1's real guardian-gated registerAgent flow.
+// WillTokenV5's real guardian-gated registerAgent flow.
 
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts'
 import type { Address } from 'viem'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { createOpenClawNode, OpenClawBridge } from './openclaw-node'
-import { calcSeekerScore } from './SeekerScore'
+import { calcClawScore } from './ajan6-ClawScore'
 
 export interface SwarmAgentRole {
   id: string // "ajan-1".."ajan-9"
@@ -81,7 +77,7 @@ export function bootSwarm(options: BootSwarmOptions = {}): SwarmBoot {
 
   const unwatchIntents = node.watchIntents((intent) => {
     log(
-      `[swarm-boot] IntentExecuted: ${intent.from} -> ${intent.to} (${intent.amount} HOSE, task ${intent.taskId})`
+      `[swarm-boot] IntentExecuted: ${intent.from} -> ${intent.to} (${intent.amount} WILL, task ${intent.taskId})`
     )
   })
 
@@ -162,7 +158,7 @@ export async function prepareSettlement(
 
 // ============ Monitor WebSocket server ============
 // Bridges swarm-boot.ts / openclaw-node.ts's on-chain watchers + a
-// periodic SeekerScore snapshot to artifacts/scarcat-monitor.tsx's client
+// periodic ClawScore snapshot to artifacts/scarcat-monitor.tsx's client
 // over a plain WebSocket. Message shape (MonitorMessage) is duplicated
 // in scarcat-monitor.tsx rather than shared via import — that file runs
 // in the browser, this one in Node, and keeping them independently
@@ -172,13 +168,13 @@ export async function prepareSettlement(
 export type MonitorMessage =
   | { type: 'intent'; from: string; to: string; amount: string; taskId: string; timestamp: number }
   | { type: 'agent-registry'; agent: string; label: string; registered: boolean; timestamp: number }
-  | { type: 'seeker-score'; agentId: string; label: string; address: string; cs100: number; tier: string; timestamp: number }
+  | { type: 'claw-score'; agentId: string; label: string; address: string; cs100: number; tier: string; timestamp: number }
   | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string; timestamp: number }
 
 export interface MonitorServerOptions {
   port?: number
-  /** How often (ms) to recompute + broadcast SeekerScore per agent. Default 30s. */
-  seekerScoreIntervalMs?: number
+  /** How often (ms) to recompute + broadcast ClawScore per agent. Default 30s. */
+  clawScoreIntervalMs?: number
 }
 
 export interface MonitorServer {
@@ -226,23 +222,23 @@ export function startMonitorServer(boot: SwarmBoot, options: MonitorServerOption
     })
   })
 
-  // Periodic SeekerScore snapshot per swarm agent. Uses each agent's
+  // Periodic ClawScore snapshot per swarm agent. Uses each agent's
   // on-chain nonce as claimCount (V5-native "protocol activity" — see
-  // SeekerScore.ts) and balance for H. holdDays is left at 0 (test
+  // ajan6-ClawScore.ts) and balance for H. holdDays is left at 0 (test
   // wallets have no real acquisition history) and factionScore is
   // omitted entirely (no data source — see phase3-roadmap.md item 4).
   // This is a best-effort demo feed, not a production score service.
-  const seekerScoreTimer = setInterval(() => {
+  const clawScoreTimer = setInterval(() => {
     for (const agent of boot.agents) {
       Promise.all([boot.node.getBalance(agent.address), boot.node.getNonce(agent.address)])
         .then(([balance, nonce]) => {
-          const score = calcSeekerScore({
+          const score = calcClawScore({
             balance,
             holdDays: 0,
             claimCount: Number(nonce),
           })
           broadcast({
-            type: 'seeker-score',
+            type: 'claw-score',
             agentId: agent.id,
             label: `${agent.id} (${agent.title})`,
             address: agent.address,
@@ -256,13 +252,13 @@ export function startMonitorServer(boot: SwarmBoot, options: MonitorServerOption
           // stop the interval or crash the server
         })
     }
-  }, options.seekerScoreIntervalMs ?? 30_000)
+  }, options.clawScoreIntervalMs ?? 30_000)
 
   return {
     wss,
     broadcast,
     close: () => {
-      clearInterval(seekerScoreTimer)
+      clearInterval(clawScoreTimer)
       unwatchIntents()
       unwatchRegistry()
       for (const client of clients) client.close()

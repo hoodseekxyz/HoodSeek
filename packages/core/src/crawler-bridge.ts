@@ -1,10 +1,3 @@
-// MIGRATED 2026-07-26 from artifacts/crawler-bridge.ts into the HoodSeek
-// repo (packages/core/src/) — verified copy, no content changes: no
-// WillTokenV5/WILL/ClawScore references existed in this file to begin
-// with (it only imports OpenClawBridge/A2ARequest, both migrated
-// alongside it into the same directory, so the relative import below is
-// unchanged).
-//
 // crawler-bridge.ts — bridges "gitcrawl"/"discrawl" data into
 // openclaw-node.ts's A2A flow (OpenClawBridge).
 //

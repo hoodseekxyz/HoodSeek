@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// MIGRATED 2026-07-26 from artifacts/ajan1-HoodSeekV1.sol into the
-// HoodSeek repo (packages/contracts/src/) — verified engine copy, no
-// logic changes. Guardian/treasury/deployer addresses for any fresh
-// deploy come from dispatch/GUARDIAN_ADDRESSES.txt (not hardcoded here —
-// this contract takes them as constructor params).
-//
 // RENAMED 2026-07-25 — Option B total rebrand (DISPATCH.md Phase 11):
 // ajan1-WillTokenV5.sol -> ajan1-HoodSeekV1.sol, contract WillTokenV5 ->
 // HoodSeekV1, EIP-712 domain name string updated to match. No holders

@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// MIGRATED 2026-07-26 from artifacts/ajan1-clawsweeper-draft.sol into the
-// HoodSeek repo (packages/contracts/src/) — contract renamed
-// ClawsweeperDraft -> ClawSweeper to match the file name; logic unchanged.
-//
 // DRAFT — unaudited, not deployed. Phase 7 skeleton for `clawsweeper` per
 // Manifesto v3 ("MEV/arbitrage sweeper bot skeleton — agents scan mempool
 // and auto-trade... injects proceeds into dividend pool"). Same security
-// posture as HoodSeekV1.sol: guardian multisig + timelock gates all
+// posture as ajan1-HoodSeekV1.sol: guardian multisig + timelock gates all
 // config, single-file / no external imports, deploys via
 // `cast send --create` on Robinhood Chain (4663) — forge script does not
 // work on this chain. sweep() only ever moves capital this contract
@@ -42,7 +38,7 @@ pragma solidity ^0.8.24;
 //
 // KNOWN GAPS (flag for Red Team, same as WillTokenV6 in phase3-roadmap.md):
 //   - No reentrancy guard on sweep(). Token is expected to be a plain
-//     ERC20 (like $HOSE) with no external callback on transfer/approve,
+//     ERC20 (like $WILL) with no external callback on transfer/approve,
 //     so there is no reentrancy surface today — but this assumption must
 //     be re-verified for every token this is ever pointed at.
 //   - Router/path validation is minimal (whitelisted router address only,
@@ -67,7 +63,7 @@ interface IERC20Like {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
-contract ClawSweeper {
+contract ClawsweeperDraft {
     uint256 public constant TIMELOCK_DELAY = 2 days;
     uint256 public constant MIN_GUARDIANS = 3;
     uint256 public constant MIN_THRESHOLD = 2;
